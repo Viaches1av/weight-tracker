@@ -1,5 +1,5 @@
 // src/components/GoalsView/GoalsView.jsx
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { calculateGoalProgress, isGoalAchieved } from '../../utils/statistics';
 import styles from './GoalsView.module.css';
 
