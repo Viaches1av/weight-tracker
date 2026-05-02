@@ -1,0 +1,155 @@
+/* src/components/Dashboard/Dashboard.module.css */
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: white;
+  position: relative;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.headerContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 20px;
+  margin: 0;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userEmail {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.logoutButton {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s;
+}
+
+.logoutButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.main {
+  flex: 1;
+  padding: 16px;
+  padding-bottom: 80px;
+  overflow-y: auto;
+}
+
+.nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  display: flex;
+  border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.navButton {
+  flex: 1;
+  padding: 12px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #7f8c8d;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.navButton:hover {
+  color: #3498db;
+  background: #f8f9fa;
+}
+
+.navButton.active {
+  color: #3498db;
+  border-top: 2px solid #3498db;
+  background: #f0f4ff;
+}
+
+.addButton {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+  z-index: 90;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.addButton:hover {
+  background: #219a52;
+  box-shadow: 0 6px 16px rgba(39, 174, 96, 0.4);
+}
+
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.errorMessage {
+  color: #e74c3c;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.retryButton {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.retryButton:hover {
+  background: #2980b9;
+}

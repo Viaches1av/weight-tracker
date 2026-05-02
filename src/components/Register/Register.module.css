@@ -1,0 +1,94 @@
+/* src/components/Register/Register.module.css */
+.form {
+  width: 100%;
+  max-width: 400px;
+  padding: 20px;
+}
+
+.title {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  color: #34495e;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.button {
+  width: 100%;
+  padding: 14px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: 8px;
+}
+
+.button:hover {
+  background: #219a52;
+}
+
+.button:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.switchText {
+  text-align: center;
+  margin-top: 16px;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.switchButton {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.switchButton:hover {
+  color: #2980b9;
+}

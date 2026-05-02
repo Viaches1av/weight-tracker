@@ -1,0 +1,291 @@
+/* src/components/ParametersManager/ParametersManager.module.css */
+.container {
+  padding: 8px 0;
+  padding-bottom: 60px;
+}
+
+.title {
+  font-size: 18px;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.description {
+  font-size: 13px;
+  color: #7f8c8d;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.addButton {
+  width: 100%;
+  padding: 12px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-bottom: 16px;
+}
+
+.addButton:hover {
+  background: #2980b9;
+}
+
+.formContainer {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.formTitle {
+  font-size: 16px;
+  color: #2c3e50;
+  margin-bottom: 16px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  color: #34495e;
+  font-weight: 500;
+}
+
+.input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.unitButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.unitButton {
+  flex: 1;
+  padding: 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+}
+
+.unitButton:hover {
+  background: #f8f9fa;
+  border-color: #3498db;
+}
+
+.unitButton.active {
+  background: #3498db;
+  color: white;
+  border-color: #3498db;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cancelButton {
+  flex: 1;
+  padding: 10px;
+  background: #ecf0f1;
+  color: #7f8c8d;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancelButton:hover {
+  background: #dfe4e6;
+}
+
+.saveButton {
+  flex: 1;
+  padding: 10px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  background: #219a52;
+}
+
+.error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.parametersList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.parameterChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0f4ff;
+  border: 1px solid #d4e0f3;
+  border-radius: 20px;
+  padding: 8px 16px;
+  transition: all 0.3s;
+}
+
+.parameterChip:hover {
+  background: #e3ecf9;
+  border-color: #3498db;
+}
+
+.chipInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chipName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.chipUnit {
+  font-size: 12px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  background: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.chipDefault {
+  font-size: 10px;
+  color: #27ae60;
+  background: #e8f5e9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.deleteChipButton {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 50%;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.deleteChipButton:hover {
+  background: #fde8e8;
+}
+
+.infoBlock {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+}
+
+.infoTitle {
+  font-size: 14px;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.infoList {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.infoList li {
+  font-size: 13px;
+  color: #34495e;
+}
+
+.infoList li strong {
+  color: #2c3e50;
+  text-transform: uppercase;
+}
+
+.loadingState {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 20px;
+  color: #7f8c8d;
+  font-size: 14px;
+  width: 100%;
+}
