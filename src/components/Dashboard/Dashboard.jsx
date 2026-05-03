@@ -30,6 +30,7 @@ function Dashboard({ session, onLogout }) {
     parameters,
     loading: parametersLoading,
     addParameter,
+    updateTrackingType, // ← добавлено
     deleteParameter,
   } = useParameters(session.user.id);
 
@@ -63,6 +64,13 @@ function Dashboard({ session, onLogout }) {
       return result;
     },
     [updateMeasurement, fetchMeasurements],
+  );
+
+  const handleUpdateTrackingType = useCallback(
+    async (parameterId, trackingType) => {
+      return await updateTrackingType(parameterId, trackingType);
+    },
+    [updateTrackingType],
   );
 
   // Обработчик удаления измерения
@@ -173,6 +181,7 @@ function Dashboard({ session, onLogout }) {
             parameters={parameters}
             loading={parametersLoading}
             onAddParameter={handleAddParameter}
+            onUpdateTrackingType={handleUpdateTrackingType} // ← добавлено
             onDeleteParameter={handleDeleteParameter}
           />
         );

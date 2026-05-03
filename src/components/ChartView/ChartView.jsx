@@ -501,7 +501,7 @@ function ChartView({
       clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, [filteredMeasurements, currentGoal]);
+  }, [filteredMeasurements, currentGoal, parameters, selectedParameter]);
 
   // Очистка
   useEffect(() => {
