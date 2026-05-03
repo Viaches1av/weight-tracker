@@ -25,7 +25,12 @@ echarts.use([
 /**
  * Вспомогательная функция для отрисовки цветных сегментов
  */
-const drawColoredLineSegments = (chart, data) => {
+const drawColoredLineSegments = (
+  chart,
+  data,
+  parameters,
+  selectedParameter,
+) => {
   if (!chart || !data || data.length < 2) return;
 
   try {
@@ -50,14 +55,21 @@ const drawColoredLineSegments = (chart, data) => {
         [currentData.date, currentData.value],
       );
 
+      const currentParam = parameters.find(
+        (p) => p.parameter_name === selectedParameter,
+      );
+      const trackingType = currentParam?.tracking_type || 'loss';
+
       if (!prevPoint || !currentPoint) continue;
 
       // Определяем цвет сегмента
       let color = '#F39C12'; // желтый
       if (currentData.value > prevData.value) {
-        color = '#E74C3C'; // красный
+        // Значение выросло
+        color = trackingType === 'loss' ? '#E74C3C' : '#27AE60';
       } else if (currentData.value < prevData.value) {
-        color = '#27AE60'; // зеленый
+        // Значение снизилось
+        color = trackingType === 'loss' ? '#27AE60' : '#E74C3C';
       }
 
       // Создаем линию
@@ -231,10 +243,15 @@ function ChartView({
 
       if (index > 0) {
         const prevValue = filteredMeasurements[index - 1].value;
+        const currentParam = parameters.find(
+          (p) => p.parameter_name === selectedParameter,
+        );
+        const trackingType = currentParam?.tracking_type || 'loss';
+
         if (m.value > prevValue) {
-          color = '#E74C3C';
+          color = trackingType === 'loss' ? '#E74C3C' : '#27AE60';
         } else if (m.value < prevValue) {
-          color = '#27AE60';
+          color = trackingType === 'loss' ? '#27AE60' : '#E74C3C';
         }
       }
 
@@ -484,14 +501,24 @@ function ChartView({
 
     // Отрисовываем цветные линии с задержкой
     const timer = setTimeout(() => {
-      drawColoredLineSegments(chart, filteredMeasurements);
+      drawColoredLineSegments(
+        chart,
+        filteredMeasurements,
+        parameters,
+        selectedParameter,
+      );
     }, 200);
 
     // Обработчик ресайза
     const handleResize = () => {
       chart.resize();
       setTimeout(() => {
-        drawColoredLineSegments(chart, filteredMeasurements);
+        drawColoredLineSegments(
+          chart,
+          filteredMeasurements,
+          parameters,
+          selectedParameter,
+        );
       }, 200);
     };
 

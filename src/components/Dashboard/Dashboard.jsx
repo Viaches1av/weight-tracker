@@ -30,7 +30,7 @@ function Dashboard({ session, onLogout }) {
     parameters,
     loading: parametersLoading,
     addParameter,
-    updateTrackingType, // ← добавлено
+    updateTrackingType,
     deleteParameter,
   } = useParameters(session.user.id);
 
@@ -66,13 +66,6 @@ function Dashboard({ session, onLogout }) {
     [updateMeasurement, fetchMeasurements],
   );
 
-  const handleUpdateTrackingType = useCallback(
-    async (parameterId, trackingType) => {
-      return await updateTrackingType(parameterId, trackingType);
-    },
-    [updateTrackingType],
-  );
-
   // Обработчик удаления измерения
   const handleDeleteMeasurement = useCallback(
     async (id) => {
@@ -87,18 +80,40 @@ function Dashboard({ session, onLogout }) {
 
   // Обработчик добавления параметра
   const handleAddParameter = useCallback(
-    async (name, unit) => {
-      return await addParameter(name, unit);
+    async (name, unit, trackingType) => {
+      return await addParameter(name, unit, trackingType);
     },
     [addParameter],
+  );
+
+  // Обработчик обновления типа отслеживания
+  const handleUpdateTrackingType = useCallback(
+    async (parameterId, trackingType) => {
+      const result = await updateTrackingType(parameterId, trackingType);
+      // Принудительно обновляем измерения после смены типа
+      if (result.success) {
+        await fetchMeasurements();
+      }
+      return result;
+    },
+    [updateTrackingType, fetchMeasurements],
   );
 
   // Обработчик удаления параметра
   const handleDeleteParameter = useCallback(
     async (id) => {
-      return await deleteParameter(id);
+      const result = await deleteParameter(id);
+      if (result.success) {
+        // Если удалили текущий выбранный параметр, переключаемся на "вес"
+        const deletedParam = parameters.find((p) => p.id === id);
+        if (deletedParam && deletedParam.parameter_name === selectedParameter) {
+          setSelectedParameter('вес');
+        }
+        await fetchMeasurements();
+      }
+      return result;
     },
-    [deleteParameter],
+    [deleteParameter, fetchMeasurements, parameters, selectedParameter],
   );
 
   // Обработчик добавления цели
@@ -181,7 +196,7 @@ function Dashboard({ session, onLogout }) {
             parameters={parameters}
             loading={parametersLoading}
             onAddParameter={handleAddParameter}
-            onUpdateTrackingType={handleUpdateTrackingType} // ← добавлено
+            onUpdateTrackingType={handleUpdateTrackingType}
             onDeleteParameter={handleDeleteParameter}
           />
         );

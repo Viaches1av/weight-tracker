@@ -2,10 +2,6 @@
 import { useState, useCallback } from 'react';
 import styles from './ParametersManager.module.css';
 
-/**
- * Компонент для управления параметрами измерений
- * Добавлена возможность выбора типа отслеживания
- */
 function ParametersManager({
   parameters = [],
   loading = false,
@@ -19,6 +15,7 @@ function ParametersManager({
   const [newParamTracking, setNewParamTracking] = useState('loss');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [expandedParams, setExpandedParams] = useState({});
 
   // Доступные единицы измерения
   const units = [
@@ -27,21 +24,13 @@ function ParametersManager({
     { value: 'l', label: 'Литры (л)' },
   ];
 
-  // Типы отслеживания
-  const trackingTypes = [
-    {
-      value: 'loss',
-      label: '📉 Снижение',
-      description: '↓ зелёный (хорошо), ↑ красный (плохо)',
-      color: '#27ae60',
-    },
-    {
-      value: 'gain',
-      label: '📈 Набор',
-      description: '↑ зелёный (хорошо), ↓ красный (плохо)',
-      color: '#27ae60',
-    },
-  ];
+  // Переключение раскрытия карточки
+  const toggleExpand = useCallback((paramId) => {
+    setExpandedParams((prev) => ({
+      ...prev,
+      [paramId]: !prev[paramId],
+    }));
+  }, []);
 
   // Обработчик добавления параметра
   const handleAddParameter = useCallback(
@@ -50,19 +39,16 @@ function ParametersManager({
       setError('');
       setSuccessMessage('');
 
-      // Валидация
       if (!newParamName.trim()) {
         setError('Введите название параметра');
         return;
       }
 
-      // Проверка на длину
       if (newParamName.trim().length < 2) {
         setError('Название должно содержать минимум 2 символа');
         return;
       }
 
-      // Проверка на спецсимволы
       if (!/^[а-яёa-z0-9\s]+$/i.test(newParamName.trim())) {
         setError('Название может содержать только буквы, цифры и пробелы');
         return;
@@ -75,17 +61,13 @@ function ParametersManager({
       );
 
       if (result.success) {
-        if (result.reactivated) {
-          setSuccessMessage('Параметр успешно восстановлен!');
-        } else {
-          setSuccessMessage('Параметр успешно добавлен!');
-        }
+        setSuccessMessage(
+          result.reactivated ? 'Параметр восстановлен!' : 'Параметр добавлен!',
+        );
         setNewParamName('');
         setNewParamUnit('kg');
         setNewParamTracking('loss');
         setShowAddForm(false);
-
-        // Скрываем сообщение через 3 секунды
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         setError(result.error || 'Ошибка при добавлении параметра');
@@ -97,22 +79,12 @@ function ParametersManager({
   // Обработчик удаления параметра
   const handleDeleteParameter = useCallback(
     async (parameter) => {
-      // Защита от удаления параметра "вес"
       if (parameter.parameter_name === 'вес') {
-        alert('Параметр "вес" нельзя удалить. Это основной параметр системы.');
+        alert('Параметр "вес" нельзя удалить.');
         return;
       }
 
-      const confirmMessage = [
-        `Вы действительно хотите удалить параметр "${parameter.parameter_name}"?`,
-        '',
-        'Будет удалено:',
-        '• Все измерения этого параметра',
-        '• Цель для этого параметра (если есть)',
-        '• Сам параметр из списка',
-        '',
-        'Это действие нельзя отменить!',
-      ].join('\n');
+      const confirmMessage = `Удалить параметр "${parameter.parameter_name}" навсегда?\n\nБудут удалены все измерения и цели для этого параметра.`;
 
       if (window.confirm(confirmMessage)) {
         const result = await onDeleteParameter(parameter.id);
@@ -128,16 +100,11 @@ function ParametersManager({
   // Обработчик изменения типа отслеживания
   const handleTrackingTypeChange = useCallback(
     async (parameterId, newType) => {
-      const result = await onUpdateTrackingType(parameterId, newType);
-      if (result.success) {
-        setSuccessMessage('Тип отслеживания обновлён');
-        setTimeout(() => setSuccessMessage(''), 2000);
-      }
+      await onUpdateTrackingType(parameterId, newType);
     },
     [onUpdateTrackingType],
   );
 
-  // Если загрузка
   if (loading) {
     return (
       <div className={styles.container}>
@@ -152,15 +119,9 @@ function ParametersManager({
   return (
     <div className={styles.container}>
       <h2 className={styles.title}>Управление параметрами</h2>
-      <p className={styles.description}>
-        Создавайте собственные параметры для отслеживания. Для каждого параметра
-        можно выбрать цель: снижение или набор.
-      </p>
 
-      {/* Сообщение об успехе */}
       {successMessage && <div className={styles.success}>{successMessage}</div>}
 
-      {/* Кнопка добавления */}
       {!showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
@@ -170,7 +131,6 @@ function ParametersManager({
         </button>
       )}
 
-      {/* Форма добавления */}
       {showAddForm && (
         <div className={styles.formContainer}>
           <h3 className={styles.formTitle}>Новый параметр</h3>
@@ -178,23 +138,20 @@ function ParametersManager({
           {error && <div className={styles.error}>{error}</div>}
 
           <form onSubmit={handleAddParameter} className={styles.form}>
-            {/* Название параметра */}
             <div className={styles.field}>
-              <label className={styles.label}>Название параметра</label>
+              <label className={styles.label}>Название</label>
               <input
                 type="text"
                 value={newParamName}
                 onChange={(e) => setNewParamName(e.target.value)}
                 className={styles.input}
-                placeholder="Например: бицепс, талия, бедро"
+                placeholder="Например: бицепс, талия"
                 required
                 maxLength={50}
                 autoFocus
               />
-              <span className={styles.hint}>Только буквы, цифры и пробелы</span>
             </div>
 
-            {/* Единица измерения */}
             <div className={styles.field}>
               <label className={styles.label}>Единица измерения</label>
               <div className={styles.unitButtons}>
@@ -211,27 +168,32 @@ function ParametersManager({
               </div>
             </div>
 
-            {/* Тип отслеживания */}
             <div className={styles.field}>
               <label className={styles.label}>Цель отслеживания</label>
               <div className={styles.trackingButtons}>
-                {trackingTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    type="button"
-                    className={`${styles.trackingButton} ${newParamTracking === type.value ? styles.active : ''}`}
-                    onClick={() => setNewParamTracking(type.value)}
-                  >
-                    <span className={styles.trackingLabel}>{type.label}</span>
-                    <span className={styles.trackingDesc}>
-                      {type.description}
-                    </span>
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className={`${styles.trackingButton} ${newParamTracking === 'loss' ? styles.active : ''}`}
+                  onClick={() => setNewParamTracking('loss')}
+                >
+                  <span className={styles.trackingLabel}>📉 Снижение</span>
+                  <span className={styles.trackingDesc}>
+                    ↓ зелёный (хорошо), ↑ красный (плохо)
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.trackingButton} ${newParamTracking === 'gain' ? styles.active : ''}`}
+                  onClick={() => setNewParamTracking('gain')}
+                >
+                  <span className={styles.trackingLabel}>📈 Набор</span>
+                  <span className={styles.trackingDesc}>
+                    ↑ зелёный (хорошо), ↓ красный (плохо)
+                  </span>
+                </button>
               </div>
             </div>
 
-            {/* Кнопки */}
             <div className={styles.formActions}>
               <button
                 type="button"
@@ -251,97 +213,135 @@ function ParametersManager({
         </div>
       )}
 
-      {/* Список параметров */}
       <div className={styles.parametersList}>
         {parameters.length === 0 ? (
           <div className={styles.emptyState}>
             <p>Нет дополнительных параметров</p>
-            <p className={styles.emptyHint}>
-              Параметр "вес" создаётся автоматически при регистрации
-            </p>
           </div>
         ) : (
-          parameters.map((param) => (
-            <div key={param.id} className={styles.parameterCard}>
-              <div className={styles.paramHeader}>
-                <div className={styles.paramInfo}>
-                  <span className={styles.paramName}>
-                    {param.parameter_name}
-                  </span>
-                  <span className={styles.paramUnit}>{param.unit}</span>
-                  {param.parameter_name === 'вес' && (
-                    <span className={styles.paramDefault}>системный</span>
-                  )}
+          parameters.map((param) => {
+            const isExpanded = expandedParams[param.id] || false;
+
+            return (
+              <div key={param.id} className={styles.parameterCard}>
+                {/* Заголовок карточки (всегда видимый) */}
+                <div
+                  className={styles.paramHeader}
+                  onClick={() => toggleExpand(param.id)}
+                >
+                  <div className={styles.paramInfo}>
+                    <span className={styles.paramName}>
+                      {param.parameter_name}
+                    </span>
+                    <span className={styles.paramUnit}>{param.unit}</span>
+                    {param.parameter_name === 'вес' && (
+                      <span className={styles.paramDefault}>системный</span>
+                    )}
+                  </div>
+
+                  <div className={styles.paramActions}>
+                    <span className={styles.expandIcon}>
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                    {param.parameter_name !== 'вес' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteParameter(param);
+                        }}
+                        className={styles.deleteButton}
+                        title="Удалить параметр"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Кнопка удаления (кроме веса) */}
-                {param.parameter_name !== 'вес' && (
-                  <button
-                    onClick={() => handleDeleteParameter(param)}
-                    className={styles.deleteButton}
-                    title="Удалить параметр"
-                  >
-                    ✕
-                  </button>
+                {/* Раскрывающаяся часть */}
+                {isExpanded && (
+                  <div className={styles.paramDetails}>
+                    {/* Цель отслеживания */}
+                    <div className={styles.trackingToggle}>
+                      <span className={styles.toggleLabel}>Цель:</span>
+                      <div className={styles.toggleButtons}>
+                        <button
+                          className={`${styles.toggleButton} ${param.tracking_type === 'loss' ? styles.toggleActive : ''}`}
+                          onClick={() =>
+                            handleTrackingTypeChange(param.id, 'loss')
+                          }
+                        >
+                          📉 Снижение
+                        </button>
+                        <button
+                          className={`${styles.toggleButton} ${param.tracking_type === 'gain' ? styles.toggleActive : ''}`}
+                          onClick={() =>
+                            handleTrackingTypeChange(param.id, 'gain')
+                          }
+                        >
+                          📈 Набор
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Пояснение цветов */}
+                    <div className={styles.colorLogic}>
+                      {param.tracking_type === 'loss' ? (
+                        <div className={styles.colorExplanation}>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#27AE60' }}
+                            ></span>
+                            <span>Снижение = хорошо (зелёный)</span>
+                          </div>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#E74C3C' }}
+                            ></span>
+                            <span>Рост = плохо (красный)</span>
+                          </div>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#F39C12' }}
+                            ></span>
+                            <span>Без изменений (жёлтый)</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={styles.colorExplanation}>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#27AE60' }}
+                            ></span>
+                            <span>Рост = хорошо (зелёный)</span>
+                          </div>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#E74C3C' }}
+                            ></span>
+                            <span>Снижение = плохо (красный)</span>
+                          </div>
+                          <div className={styles.colorRow}>
+                            <span
+                              className={styles.colorDot}
+                              style={{ background: '#F39C12' }}
+                            ></span>
+                            <span>Без изменений (жёлтый)</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* Переключатель типа отслеживания */}
-              <div className={styles.trackingToggle}>
-                <span className={styles.toggleLabel}>Цель:</span>
-                <div className={styles.toggleButtons}>
-                  <button
-                    className={`${styles.toggleButton} ${param.tracking_type === 'loss' ? styles.toggleActive : ''}`}
-                    onClick={() => handleTrackingTypeChange(param.id, 'loss')}
-                  >
-                    📉 Снижение
-                  </button>
-                  <button
-                    className={`${styles.toggleButton} ${param.tracking_type === 'gain' ? styles.toggleActive : ''}`}
-                    onClick={() => handleTrackingTypeChange(param.id, 'gain')}
-                  >
-                    📈 Набор
-                  </button>
-                </div>
-              </div>
-
-              {/* Пояснение текущей логики цветов */}
-              <div className={styles.colorLogic}>
-                {param.tracking_type === 'loss' ? (
-                  <span>
-                    <span className={styles.good}>↓ Зелёный</span> — хорошо
-                    (снижение), <span className={styles.bad}>↑ Красный</span> —
-                    плохо (рост)
-                  </span>
-                ) : (
-                  <span>
-                    <span className={styles.good}>↑ Зелёный</span> — хорошо
-                    (набор), <span className={styles.bad}>↓ Красный</span> —
-                    плохо (снижение)
-                  </span>
-                )}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
-      </div>
-
-      {/* Информация */}
-      <div className={styles.infoBlock}>
-        <h4 className={styles.infoTitle}>Как работают цвета на графике?</h4>
-        <ul className={styles.infoList}>
-          <li>
-            <strong>Снижение:</strong> зелёная линия вниз (прогресс), красная
-            вверх (откат)
-          </li>
-          <li>
-            <strong>Набор:</strong> зелёная линия вверх (прогресс), красная вниз
-            (откат)
-          </li>
-          <li>
-            <strong>Жёлтый:</strong> значение не изменилось
-          </li>
-        </ul>
       </div>
     </div>
   );
