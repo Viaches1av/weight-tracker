@@ -15,6 +15,9 @@ function Dashboard({ session, onLogout }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedParameter, setSelectedParameter] = useState('вес');
 
+  // Состояние для запоминания последнего использованного параметра
+  const [lastUsedParameter, setLastUsedParameter] = useState('вес');
+
   // Инициализация хуков
   const {
     measurements,
@@ -42,11 +45,13 @@ function Dashboard({ session, onLogout }) {
     deleteGoal,
   } = useGoals(session.user.id);
 
-  // Обработчик добавления измерения
+  // Обработчик добавления измерения с запоминанием параметра
   const handleAddMeasurement = useCallback(
     async (measurementData) => {
       const result = await addMeasurement(measurementData);
       if (result.success) {
+        // Запоминаем последний использованный параметр
+        setLastUsedParameter(measurementData.parameter);
         setShowAddModal(false);
       }
       return result;
@@ -90,7 +95,6 @@ function Dashboard({ session, onLogout }) {
   const handleUpdateTrackingType = useCallback(
     async (parameterId, trackingType) => {
       const result = await updateTrackingType(parameterId, trackingType);
-      // Принудительно обновляем измерения после смены типа
       if (result.success) {
         await fetchMeasurements();
       }
@@ -106,14 +110,25 @@ function Dashboard({ session, onLogout }) {
       if (result.success) {
         // Если удалили текущий выбранный параметр, переключаемся на "вес"
         const deletedParam = parameters.find((p) => p.id === id);
-        if (deletedParam && deletedParam.parameter_name === selectedParameter) {
-          setSelectedParameter('вес');
+        if (deletedParam) {
+          if (deletedParam.parameter_name === selectedParameter) {
+            setSelectedParameter('вес');
+          }
+          if (deletedParam.parameter_name === lastUsedParameter) {
+            setLastUsedParameter('вес');
+          }
         }
         await fetchMeasurements();
       }
       return result;
     },
-    [deleteParameter, fetchMeasurements, parameters, selectedParameter],
+    [
+      deleteParameter,
+      fetchMeasurements,
+      parameters,
+      selectedParameter,
+      lastUsedParameter,
+    ],
   );
 
   // Обработчик добавления цели
@@ -140,9 +155,18 @@ function Dashboard({ session, onLogout }) {
     [deleteGoal],
   );
 
+  // Обработчик открытия модального окна
+  const handleOpenAddModal = useCallback(() => {
+    setShowAddModal(true);
+  }, []);
+
+  // Обработчик закрытия модального окна
+  const handleCloseAddModal = useCallback(() => {
+    setShowAddModal(false);
+  }, []);
+
   // Рендер содержимого в зависимости от активной вкладки
   const renderContent = () => {
-    // Отображение ошибки загрузки
     if (measurementsError) {
       return (
         <div className={styles.errorContainer}>
@@ -165,7 +189,7 @@ function Dashboard({ session, onLogout }) {
             goals={goals}
             selectedParameter={selectedParameter}
             onParameterChange={setSelectedParameter}
-            onAddMeasurement={() => setShowAddModal(true)}
+            onAddMeasurement={handleOpenAddModal}
           />
         );
       case 'history':
@@ -175,7 +199,7 @@ function Dashboard({ session, onLogout }) {
             loading={measurementsLoading}
             onUpdateMeasurement={handleUpdateMeasurement}
             onDeleteMeasurement={handleDeleteMeasurement}
-            onAddMeasurement={() => setShowAddModal(true)}
+            onAddMeasurement={handleOpenAddModal}
           />
         );
       case 'goals':
@@ -253,10 +277,7 @@ function Dashboard({ session, onLogout }) {
 
       {/* Кнопка добавления записи */}
       {(activeTab === 'chart' || activeTab === 'history') && (
-        <button
-          className={styles.addButton}
-          onClick={() => setShowAddModal(true)}
-        >
+        <button className={styles.addButton} onClick={handleOpenAddModal}>
           + Добавить запись
         </button>
       )}
@@ -267,7 +288,8 @@ function Dashboard({ session, onLogout }) {
           parameters={parameters}
           measurements={measurements}
           onAdd={handleAddMeasurement}
-          onClose={() => setShowAddModal(false)}
+          onClose={handleCloseAddModal}
+          defaultParameter={lastUsedParameter}
         />
       )}
     </div>

@@ -7,6 +7,7 @@ import {
   TooltipComponent,
   MarkLineComponent,
   AxisPointerComponent,
+  DataZoomComponent,
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { calculateStatistics } from '../../utils/statistics';
@@ -19,6 +20,7 @@ echarts.use([
   TooltipComponent,
   MarkLineComponent,
   AxisPointerComponent,
+  DataZoomComponent,
   CanvasRenderer,
 ]);
 
@@ -356,42 +358,104 @@ function ChartView({
         containLabel: false,
       },
 
+      // DataZoom для навигации по графику
+      dataZoom: [
+        // Внутренний зум (свайпы, жесты) — работает всегда
+        {
+          type: 'inside',
+          xAxisIndex: 0,
+          start:
+            filteredMeasurements.length > 6
+              ? Math.max(
+                  0,
+                  ((filteredMeasurements.length - 6) /
+                    filteredMeasurements.length) *
+                    100,
+                )
+              : 0, // Если > 6 записей, показываем последние 6
+          end: 100,
+          throttle: 50,
+          zoomOnMouseWheel: false,
+          moveOnMouseMove: true,
+          moveOnMouseWheel: false,
+          minValueSpan: 2,
+          maxValueSpan: filteredMeasurements.length, // Максимум все записи
+          zoomLock: false,
+        },
+        // Видимый слайдер — только когда записей > 6
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          start:
+            filteredMeasurements.length > 6
+              ? Math.max(
+                  0,
+                  ((filteredMeasurements.length - 6) /
+                    filteredMeasurements.length) *
+                    100,
+                )
+              : 0,
+          end: 100,
+          height: 24,
+          bottom: 0,
+          show: filteredMeasurements.length > 6,
+          showDetail: false,
+          showDataShadow: false,
+          borderColor: 'transparent',
+          backgroundColor: 'transparent',
+          fillerColor: 'rgba(52, 152, 219, 0.12)',
+          borderRadius: 12,
+          handleStyle: {
+            color: '#3498db',
+            width: 28,
+            height: 20,
+            borderRadius: 10,
+            borderColor: 'white',
+            borderWidth: 2,
+            shadowBlur: 4,
+            shadowColor: 'rgba(0,0,0,0.2)',
+          },
+          moveHandleStyle: {
+            color: '#2980b9',
+          },
+          emphasis: {
+            handleStyle: {
+              width: 32,
+              height: 24,
+            },
+          },
+          textStyle: {
+            color: '#95a5a6',
+            fontSize: 9,
+          },
+        },
+      ],
+
       // Ось X (даты) - показываем только реальные даты измерений
       xAxis: {
         type: 'category',
         data: dates,
-        axisLine: {
-          show: true,
-          lineStyle: {
-            color: '#e0e0e0',
-            width: 1,
-          },
-        },
-        axisTick: {
-          show: true,
-          alignWithLabel: true,
-          length: 4,
-          lineStyle: { color: '#e0e0e0' },
-        },
+        boundaryGap: true,
+
+        // ВАЖНО для dataZoom:
         axisLabel: {
           color: '#7f8c8d',
           fontSize: 11,
           fontWeight: 400,
           margin: 8,
           formatter: (value) => {
-            // Форматируем дату как "27.04"
             const date = new Date(value);
             const day = date.getDate().toString().padStart(2, '0');
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             return `${day}.${month}`;
           },
-          // Показываем все метки
-          interval: 0,
-          rotate: 0,
+          interval: 'auto', // Автоматический интервал меток
+          showMaxLabel: true, // Всегда показывать последнюю метку
+          showMinLabel: true, // Всегда показывать первую метку
+          hideOverlap: true, // Скрывать перекрывающиеся метки ← ВАЖНО
         },
         splitLine: { show: false },
         // Добавляем отступы по краям
-        boundaryGap: true,
       },
 
       // Ось Y (значения) - красивые целые числа

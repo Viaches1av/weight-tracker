@@ -11,6 +11,7 @@
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  backdrop-filter: blur(2px);
 }
 
 .modal {
@@ -26,11 +27,11 @@
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-20px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -84,6 +85,35 @@
   background-position: right 12px center;
   background-size: 16px;
   padding-right: 40px;
+}
+
+.valueInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.valueInputWrapper .input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.unitLabel {
+  position: absolute;
+  right: 12px;
+  font-size: 14px;
+  color: #7f8c8d;
+  font-weight: 500;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.hint {
+  font-size: 11px;
+  color: #3498db;
+  font-weight: 500;
+  margin-top: -4px;
+  padding-left: 4px;
 }
 
 .actions {

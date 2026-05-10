@@ -4,6 +4,7 @@ import styles from './AddMeasurement.module.css';
 
 /**
  * Модальное окно для добавления/редактирования измерения
+ * Теперь с поддержкой defaultParameter
  */
 function AddMeasurement({
   parameters = [],
@@ -11,9 +12,11 @@ function AddMeasurement({
   onAdd,
   onClose,
   editData = null,
+  defaultParameter = 'вес',
 }) {
+  // Используем defaultParameter если нет editData
   const [selectedParameter, setSelectedParameter] = useState(
-    editData ? editData.parameter : parameters[0]?.parameter_name || 'вес',
+    editData ? editData.parameter : defaultParameter,
   );
   const [value, setValue] = useState(editData ? editData.value.toString() : '');
   const [date, setDate] = useState(
@@ -29,21 +32,21 @@ function AddMeasurement({
 
   // Проверка на дубликат записи
   const checkDuplicate = useMemo(() => {
-    if (editData) return false; // При редактировании не проверяем
+    if (editData) return false;
 
     return measurements.some(
       (m) => m.parameter === selectedParameter && m.date === date,
     );
   }, [measurements, selectedParameter, date, editData]);
 
-  // Шаг для инпута в зависимости от единицы измерения
-  const step = useMemo(() => {
-    return '0.1';
-  }, []);
-
-  // Сегодняшняя дата для ограничения
+  // Максимальная дата - сегодня
   const maxDate = useMemo(() => {
     return new Date().toISOString().split('T')[0];
+  }, []);
+
+  // Шаг для числового поля
+  const inputStep = useMemo(() => {
+    return '0.1';
   }, []);
 
   // Обработчик отправки формы
@@ -89,10 +92,20 @@ function AddMeasurement({
       if (!result.success) {
         setError(result.error || 'Ошибка при сохранении');
       }
+      // Если успех - форма закроется из Dashboard
     } catch (err) {
       setError(err.message || 'Неизвестная ошибка');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Обработчик изменения значения с валидацией
+  const handleValueChange = (e) => {
+    const newValue = e.target.value;
+    // Разрешаем только числа с точкой и не более 7 символов всего
+    if (/^\d*\.?\d{0,1}$/.test(newValue) && newValue.length <= 7) {
+      setValue(newValue);
     }
   };
 
@@ -118,7 +131,7 @@ function AddMeasurement({
               value={selectedParameter}
               onChange={(e) => setSelectedParameter(e.target.value)}
               className={styles.select}
-              disabled={!!editData} // При редактировании нельзя менять параметр
+              disabled={!!editData}
             >
               {parameters.length === 0 ? (
                 <option value="">Нет доступных параметров</option>
@@ -130,6 +143,14 @@ function AddMeasurement({
                 ))
               )}
             </select>
+            {/* Подсказка, если параметр запомнен */}
+            {!editData &&
+              selectedParameter === defaultParameter &&
+              selectedParameter !== 'вес' && (
+                <span className={styles.hint}>
+                  Использован последний выбранный параметр
+                </span>
+              )}
           </div>
 
           {/* Ввод значения */}
@@ -137,16 +158,25 @@ function AddMeasurement({
             <label className={styles.label}>
               Значение {currentParameter ? `(${currentParameter.unit})` : ''}
             </label>
-            <input
-              type="number"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className={styles.input}
-              step={step}
-              min="0"
-              required
-              placeholder={`Значение в ${currentParameter?.unit || 'кг'}`}
-            />
+            <div className={styles.valueInputWrapper}>
+              <input
+                type="number"
+                value={value}
+                onChange={handleValueChange}
+                className={styles.input}
+                step={inputStep}
+                min="0"
+                required
+                placeholder={`0${currentParameter?.unit === 'kg' ? '.0' : ''}`}
+                inputMode="decimal"
+                autoFocus
+              />
+              {currentParameter && (
+                <span className={styles.unitLabel}>
+                  {currentParameter.unit}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Выбор даты */}

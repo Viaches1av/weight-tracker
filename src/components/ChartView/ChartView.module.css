@@ -104,6 +104,14 @@
   min-height: 300px;
 }
 
+.chartContainer :global(.echarts-datazoom-slider) {
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.chartContainer :global(.echarts-datazoom-slider:hover) {
+  opacity: 1;
+}
 .noData {
   text-align: center;
   padding: 40px 20px;
