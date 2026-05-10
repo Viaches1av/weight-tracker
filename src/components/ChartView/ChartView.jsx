@@ -25,8 +25,11 @@ echarts.use([
 ]);
 
 /**
- * Вспомогательная функция для отрисовки цветных сегментов
+ * Отрисовка цветных сегментов линий
+ * Теперь с правильной обработкой зумирования
  */
+// Полная замена функции в ChartView.jsx:
+
 const drawColoredLineSegments = (
   chart,
   data,
@@ -39,38 +42,100 @@ const drawColoredLineSegments = (
     const zr = chart.getZr();
     if (!zr) return;
 
+    // Удаляем старые линии
+    if (chart._coloredLinesGroup) {
+      zr.remove(chart._coloredLinesGroup);
+      chart._coloredLinesGroup = null;
+    }
+
+    const option = chart.getOption();
+    if (!option || !option.grid || !option.grid[0]) return;
+
+    const grid = option.grid[0];
+    const chartWidth = chart.getWidth();
+    const chartHeight = chart.getHeight();
+
+    // Вычисляем границы области построения
+    const left = typeof grid.left === 'number' ? grid.left : 50;
+    const right =
+      chartWidth - (typeof grid.right === 'number' ? grid.right : 20);
+    const top = typeof grid.top === 'number' ? grid.top : 30;
+    const bottom =
+      chartHeight - (typeof grid.bottom === 'number' ? grid.bottom : 25);
+
     // Создаем группу для линий
     const group = new echarts.graphic.Group();
 
+    // Получаем tracking_type
+    const currentParam = parameters.find(
+      (p) => p.parameter_name === selectedParameter,
+    );
+    const trackingType = currentParam?.tracking_type || 'loss';
+
+    // Рисуем сегменты с ручным обрезанием по границам
     for (let i = 1; i < data.length; i++) {
       const prevData = data[i - 1];
       const currentData = data[i];
 
       // Получаем координаты на canvas
-      const prevPoint = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [
+      let prevPoint = chart.convertToPixel({ xAxisIndex: 0, yAxisIndex: 0 }, [
         prevData.date,
         prevData.value,
       ]);
 
-      const currentPoint = chart.convertToPixel(
+      let currentPoint = chart.convertToPixel(
         { xAxisIndex: 0, yAxisIndex: 0 },
         [currentData.date, currentData.value],
       );
 
-      const currentParam = parameters.find(
-        (p) => p.parameter_name === selectedParameter,
-      );
-      const trackingType = currentParam?.tracking_type || 'loss';
-
       if (!prevPoint || !currentPoint) continue;
 
-      // Определяем цвет сегмента
-      let color = '#F39C12'; // желтый
+      // Проверяем, находится ли сегмент в видимой области
+      const isPrevVisible = prevPoint[0] >= left && prevPoint[0] <= right;
+      const isCurrentVisible =
+        currentPoint[0] >= left && currentPoint[0] <= right;
+
+      // Если обе точки за пределами — пропускаем
+      if (!isPrevVisible && !isCurrentVisible) continue;
+
+      // Обрезаем координаты по границам
+      if (!isPrevVisible || !isCurrentVisible) {
+        // Вычисляем уравнение прямой и находим пересечение с границами
+        const dx = currentPoint[0] - prevPoint[0];
+        const dy = currentPoint[1] - prevPoint[1];
+
+        if (dx !== 0) {
+          const slope = dy / dx;
+
+          if (!isPrevVisible && prevPoint[0] < left) {
+            // Точка слева от графика — обрезаем
+            const newY = prevPoint[1] + slope * (left - prevPoint[0]);
+            prevPoint = [left, Math.max(top, Math.min(bottom, newY))];
+          } else if (!isPrevVisible && prevPoint[0] > right) {
+            // Точка справа от графика — обрезаем
+            const newY = prevPoint[1] + slope * (right - prevPoint[0]);
+            prevPoint = [right, Math.max(top, Math.min(bottom, newY))];
+          }
+
+          if (!isCurrentVisible && currentPoint[0] < left) {
+            const newY = currentPoint[1] + slope * (left - currentPoint[0]);
+            currentPoint = [left, Math.max(top, Math.min(bottom, newY))];
+          } else if (!isCurrentVisible && currentPoint[0] > right) {
+            const newY = currentPoint[1] + slope * (right - currentPoint[0]);
+            currentPoint = [right, Math.max(top, Math.min(bottom, newY))];
+          }
+        }
+      }
+
+      // Дополнительно обрезаем по Y
+      prevPoint[1] = Math.max(top, Math.min(bottom, prevPoint[1]));
+      currentPoint[1] = Math.max(top, Math.min(bottom, currentPoint[1]));
+
+      // Определяем цвет
+      let color = '#F39C12';
       if (currentData.value > prevData.value) {
-        // Значение выросло
         color = trackingType === 'loss' ? '#E74C3C' : '#27AE60';
       } else if (currentData.value < prevData.value) {
-        // Значение снизилось
         color = trackingType === 'loss' ? '#27AE60' : '#E74C3C';
       }
 
@@ -89,17 +154,12 @@ const drawColoredLineSegments = (
           lineJoin: 'round',
         },
         z: 2,
+        silent: true,
       });
 
       group.add(line);
     }
 
-    // Удаляем старую группу
-    if (chart._coloredLinesGroup) {
-      zr.remove(chart._coloredLinesGroup);
-    }
-
-    // Добавляем новую
     zr.add(group);
     chart._coloredLinesGroup = group;
   } catch (error) {
@@ -107,9 +167,6 @@ const drawColoredLineSegments = (
   }
 };
 
-/**
- * Компонент графика с правильными осями и цветными сегментами
- */
 function ChartView({
   measurements = [],
   parameters = [],
@@ -170,12 +227,10 @@ function ChartView({
     customEndDate,
   ]);
 
-  // Получаем цель
   const currentGoal = useMemo(() => {
     return goals.find((g) => g.parameter === selectedParameter) || null;
   }, [goals, selectedParameter]);
 
-  // Статистика
   const statistics = useMemo(() => {
     return calculateStatistics(filteredMeasurements);
   }, [filteredMeasurements]);
@@ -184,20 +239,25 @@ function ChartView({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    // Если нет данных - очищаем
+    // В useEffect где проверка на пустые данные:
     if (filteredMeasurements.length === 0) {
       if (chartInstance.current) {
         chartInstance.current.clear();
         const zr = chartInstance.current.getZr();
-        if (zr && chartInstance.current._coloredLinesGroup) {
-          zr.remove(chartInstance.current._coloredLinesGroup);
-          chartInstance.current._coloredLinesGroup = null;
+        if (zr) {
+          if (chartInstance.current._coloredLinesGroup) {
+            zr.remove(chartInstance.current._coloredLinesGroup);
+            chartInstance.current._coloredLinesGroup = null;
+          }
+          if (chartInstance.current._clipPath) {
+            zr.remove(chartInstance.current._clipPath);
+            chartInstance.current._clipPath = null;
+          }
         }
       }
       return;
     }
 
-    // Инициализация
     if (!chartInstance.current) {
       chartInstance.current = echarts.init(chartRef.current, null, {
         renderer: 'canvas',
@@ -220,14 +280,13 @@ function ChartView({
       effectiveMax = Math.max(dataMax, currentGoal.target_value);
     }
 
-    // Добавляем отступ 20% ОТ ДИАПАЗОНА
     const range = effectiveMax - effectiveMin || 1;
-    const padding = range * 0.3; // Чуть больше для надежности
+    const padding = range * 0.3;
 
     const yMin = effectiveMin - padding;
     const yMax = effectiveMax + padding;
 
-    // Вычисляем красивый шаг для оси Y (целые числа)
+    // Вычисляем шаг для оси Y
     const yRange = yMax - yMin;
     let interval = 1;
 
@@ -239,17 +298,17 @@ function ChartView({
     else if (yRange <= 100) interval = 10;
     else interval = 20;
 
-    // Создаем данные с цветами
+    // Данные с цветами точек
+    const currentParam = parameters.find(
+      (p) => p.parameter_name === selectedParameter,
+    );
+    const trackingType = currentParam?.tracking_type || 'loss';
+
     const seriesData = filteredMeasurements.map((m, index) => {
       let color = '#F39C12';
 
       if (index > 0) {
         const prevValue = filteredMeasurements[index - 1].value;
-        const currentParam = parameters.find(
-          (p) => p.parameter_name === selectedParameter,
-        );
-        const trackingType = currentParam?.tracking_type || 'loss';
-
         if (m.value > prevValue) {
           color = trackingType === 'loss' ? '#E74C3C' : '#27AE60';
         } else if (m.value < prevValue) {
@@ -271,7 +330,6 @@ function ChartView({
     const option = {
       backgroundColor: '#fafafa',
 
-      // Тултип с красивым отображением
       tooltip: {
         trigger: 'axis',
         backgroundColor: 'white',
@@ -326,41 +384,30 @@ function ChartView({
             </div>
           `;
         },
-        // Дополнительно: показывать цель в тултипе
-        extraCssText: 'max-width: 250px;',
       },
 
-      // Интерактивная ось при наведении
       axisPointer: {
         show: true,
         link: [{ xAxisIndex: 'all' }],
-        label: {
-          show: false, // Скрываем стандартные метки, у нас свой тултип
-        },
+        label: { show: false },
         lineStyle: {
           color: 'rgba(52, 152, 219, 0.15)',
           width: 1,
           type: 'dashed',
         },
-        crossStyle: {
-          color: 'rgba(52, 152, 219, 0.1)',
-          width: 1,
-          type: 'dashed',
-        },
       },
 
-      // Сетка
       grid: {
-        top: 40,
-        right: 30,
-        bottom: 40,
+        top: 30,
+        right: 25,
+        bottom: filteredMeasurements.length > 6 ? 35 : 25, // Меньше отступ
         left: 55,
         containLabel: false,
       },
 
-      // DataZoom для навигации по графику
+      // DataZoom - навигация
       dataZoom: [
-        // Внутренний зум (свайпы, жесты) — работает всегда
+        // Внутренний зум (жесты, колесико) — всегда активен
         {
           type: 'inside',
           xAxisIndex: 0,
@@ -372,17 +419,15 @@ function ChartView({
                     filteredMeasurements.length) *
                     100,
                 )
-              : 0, // Если > 6 записей, показываем последние 6
+              : 0,
           end: 100,
-          throttle: 50,
-          zoomOnMouseWheel: false,
+          zoomOnMouseWheel: true,
           moveOnMouseMove: true,
           moveOnMouseWheel: false,
           minValueSpan: 2,
-          maxValueSpan: filteredMeasurements.length, // Максимум все записи
           zoomLock: false,
         },
-        // Видимый слайдер — только когда записей > 6
+        // Тонкий минималистичный слайдер
         {
           type: 'slider',
           xAxisIndex: 0,
@@ -396,48 +441,78 @@ function ChartView({
                 )
               : 0,
           end: 100,
-          height: 24,
-          bottom: 0,
+          height: 12, // Очень тонкий
+          bottom: 1,
           show: filteredMeasurements.length > 6,
           showDetail: false,
           showDataShadow: false,
-          borderColor: 'transparent',
           backgroundColor: 'transparent',
-          fillerColor: 'rgba(52, 152, 219, 0.12)',
-          borderRadius: 12,
+          borderColor: 'transparent',
+          fillerColor: 'rgba(52, 152, 219, 0.15)',
+          borderRadius: 6,
+
+          // Минималистичные ручки
           handleStyle: {
-            color: '#3498db',
-            width: 28,
-            height: 20,
-            borderRadius: 10,
+            color: 'transparent',
+            width: 0,
+            height: 0,
+            borderRadius: 6,
             borderColor: 'white',
-            borderWidth: 2,
-            shadowBlur: 4,
-            shadowColor: 'rgba(0,0,0,0.2)',
+            borderWidth: 1,
+            shadowBlur: 2,
+            shadowColor: 'rgba(0,0,0,0.1)',
           },
           moveHandleStyle: {
-            color: '#2980b9',
+            color: 'transparent',
           },
           emphasis: {
             handleStyle: {
-              width: 32,
-              height: 24,
+              width: 24,
+              height: 14,
+              shadowBlur: 4,
             },
           },
-          textStyle: {
-            color: '#95a5a6',
-            fontSize: 9,
+          textStyle: { show: false },
+
+          // Фон данных — едва заметный
+          dataBackground: {
+            lineStyle: {
+              color: 'rgba(52, 152, 219, 0.15)',
+              width: 1,
+            },
+            areaStyle: {
+              color: 'rgba(52, 152, 219, 0.03)',
+            },
+          },
+          selectedDataBackground: {
+            lineStyle: {
+              color: 'rgba(52, 152, 219, 0.3)',
+              width: 1,
+            },
+            areaStyle: {
+              color: 'rgba(52, 152, 219, 0.06)',
+            },
           },
         },
       ],
 
-      // Ось X (даты) - показываем только реальные даты измерений
       xAxis: {
         type: 'category',
         data: dates,
         boundaryGap: true,
-
-        // ВАЖНО для dataZoom:
+        axisLine: {
+          show: true,
+          lineStyle: {
+            color: '#e0e0e0',
+            width: 1,
+          },
+        },
+        axisTick: {
+          show: true,
+          alignWithLabel: true,
+          length: 4,
+          lineStyle: { color: '#e0e0e0' },
+        },
         axisLabel: {
           color: '#7f8c8d',
           fontSize: 11,
@@ -449,16 +524,14 @@ function ChartView({
             const month = (date.getMonth() + 1).toString().padStart(2, '0');
             return `${day}.${month}`;
           },
-          interval: 'auto', // Автоматический интервал меток
-          showMaxLabel: true, // Всегда показывать последнюю метку
-          showMinLabel: true, // Всегда показывать первую метку
-          hideOverlap: true, // Скрывать перекрывающиеся метки ← ВАЖНО
+          interval: 'auto',
+          showMaxLabel: true,
+          showMinLabel: true,
+          hideOverlap: true,
         },
         splitLine: { show: false },
-        // Добавляем отступы по краям
       },
 
-      // Ось Y (значения) - красивые целые числа
       yAxis: {
         type: 'value',
         min: Math.floor(yMin / interval) * interval,
@@ -482,7 +555,6 @@ function ChartView({
           fontWeight: 400,
           margin: 8,
           formatter: (value) => {
-            // Показываем целые числа без десятых, если интервал >= 1
             if (interval >= 1) {
               return Math.round(value).toString();
             }
@@ -497,12 +569,10 @@ function ChartView({
             width: 1,
           },
         },
-        // Скрываем дополнительные метки
         minorTick: { show: false },
         minorSplitLine: { show: false },
       },
 
-      // Данные
       series: [
         {
           type: 'line',
@@ -511,7 +581,7 @@ function ChartView({
           symbol: 'circle',
           symbolSize: 8,
           lineStyle: {
-            width: 0, // Скрываем стандартную линию
+            width: 0,
             color: 'transparent',
           },
           smooth: false,
@@ -519,7 +589,6 @@ function ChartView({
           animationDuration: 800,
           animationEasing: 'cubicOut',
 
-          // Линия цели
           markLine: currentGoal
             ? {
                 silent: false,
@@ -541,14 +610,6 @@ function ChartView({
                   borderRadius: 4,
                   distance: [10, 10],
                 },
-                emphasis: {
-                  label: {
-                    fontSize: 14,
-                  },
-                  lineStyle: {
-                    width: 3,
-                  },
-                },
                 data: [
                   {
                     yAxis: currentGoal.target_value,
@@ -563,38 +624,38 @@ function ChartView({
     // Применяем опции
     chart.setOption(option, true);
 
-    // Отрисовываем цветные линии с задержкой
-    const timer = setTimeout(() => {
+    // Функция перерисовки линий
+    const redrawLines = () => {
       drawColoredLineSegments(
         chart,
         filteredMeasurements,
         parameters,
         selectedParameter,
       );
-    }, 200);
+    };
 
-    // Обработчик ресайза
+    // Первоначальная отрисовка
+    setTimeout(redrawLines, 200);
+
+    // Подписываемся на события изменения области просмотра
+    chart.off('dataZoom'); // Удаляем старые подписки
+    chart.on('dataZoom', redrawLines);
+
+    // Также перерисовываем при изменении размера
     const handleResize = () => {
       chart.resize();
-      setTimeout(() => {
-        drawColoredLineSegments(
-          chart,
-          filteredMeasurements,
-          parameters,
-          selectedParameter,
-        );
-      }, 200);
+      setTimeout(redrawLines, 200);
     };
 
     window.addEventListener('resize', handleResize);
 
     return () => {
-      clearTimeout(timer);
+      chart.off('dataZoom', redrawLines);
       window.removeEventListener('resize', handleResize);
     };
   }, [filteredMeasurements, currentGoal, parameters, selectedParameter]);
 
-  // Очистка
+  // Очистка при размонтировании
   useEffect(() => {
     return () => {
       if (chartInstance.current) {
@@ -675,7 +736,6 @@ function ChartView({
         </button>
       </div>
 
-      {/* Произвольный период */}
       {timeFilter === 'custom' && (
         <div className={styles.customDates}>
           <input
@@ -698,10 +758,15 @@ function ChartView({
         </div>
       )}
 
-      {/* График */}
       {filteredMeasurements.length > 0 ? (
         <div className={styles.chartContainer}>
-          <div ref={chartRef} className={styles.chartWrapper} />
+          <div
+            ref={chartRef}
+            className={styles.chartWrapper}
+            style={{
+              height: filteredMeasurements.length > 6 ? '330px' : '310px',
+            }}
+          />
         </div>
       ) : (
         <div className={styles.noData}>
@@ -709,7 +774,6 @@ function ChartView({
         </div>
       )}
 
-      {/* Кнопка статистики */}
       <button
         className={styles.statsToggle}
         onClick={() => setShowStats(!showStats)}
@@ -717,7 +781,6 @@ function ChartView({
         {showStats ? 'Скрыть статистику ▲' : 'Показать статистику ▼'}
       </button>
 
-      {/* Статистика */}
       {showStats && filteredMeasurements.length > 0 && (
         <div className={styles.statistics}>
           <div className={styles.statGrid}>
@@ -775,7 +838,6 @@ function ChartView({
         </div>
       )}
 
-      {/* Легенда */}
       <div className={styles.legend}>
         <div className={styles.legendItem}>
           <span
